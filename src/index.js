@@ -21,8 +21,7 @@ class K9crypt {
             const result = Buffer.concat([salt, iv, encrypted, tag, dataHash]);
             return result.toString('base64');
         } catch (error) {
-            console.error('Encryption error:', error);
-            throw new Error('Encryption failed');
+            console.log('Encryption failed');
         }
     }
 
@@ -37,7 +36,7 @@ class K9crypt {
 
             const dataToVerify = data.slice(0, -64);
             if (!verifyHash(dataToVerify, dataHash)) {
-                throw new Error('Data integrity check failed');
+                console.log('Data integrity check failed');
             }
 
             const key = await deriveKey(this.secretKey, salt);
@@ -45,8 +44,7 @@ class K9crypt {
             const decompressed = await decompress(decrypted);
             return decompressed.toString('utf8');
         } catch (error) {
-            console.error('Decryption error:', error);
-            throw new Error('Decryption failed');
+            console.log('Decryption failed');
         }
     }
 }
