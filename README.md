@@ -3,7 +3,7 @@
 This is a special encryption algorithm created for K9Crypt.
 
 ## Updates
-**v1.0.7**
+**v1.0.8**
 - Enhanced encryption security with 5-layer encryption system
 - Added multiple AES encryption modes in sequence:
   - AES-256-GCM
