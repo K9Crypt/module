@@ -2,6 +2,18 @@
 
 This is a special encryption algorithm created for K9Crypt.
 
+## Updates
+**v1.0.7**
+- Enhanced encryption security with 5-layer encryption system
+- Added multiple AES encryption modes in sequence:
+  - AES-256-GCM
+  - AES-256-CBC
+  - AES-256-CFB
+  - AES-256-OFB
+  - AES-256-CTR
+- Each layer now uses its own initialization vector (IV)
+- Improved data integrity with comprehensive authentication
+
 ## Installation
 
 ```bash
