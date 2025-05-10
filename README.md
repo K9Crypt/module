@@ -3,8 +3,8 @@
 This is a special encryption algorithm created for K9Crypt.
 
 ## Updates
-**v1.0.9**
-- Added new compression algorithm and increased compression ratio.
+**v1.1.0**
+- Modules have been updated to the latest version.
 
 ## Installation
 
