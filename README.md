@@ -1,10 +1,12 @@
-# K9Crypt Encryption Algorithm
+![](https://www.upload.ee/image/18092921/k9crypt-npm-banner.png)
+
+# K9Crypt Algorithm
 
 This is a special encryption algorithm created for K9Crypt.
 
 ## Updates
-**v1.1.0**
-- Modules have been updated to the latest version.
+**v1.1.1**
+- Modules have been modified.
 
 ## Installation
 
