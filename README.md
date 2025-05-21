@@ -5,8 +5,8 @@
 This is a special encryption algorithm created for K9Crypt.
 
 ## Updates
-**v1.1.1**
-- Modules have been modified.
+**v1.1.2**
+- The issue caused by modules has been resolved.
 
 ## Installation
 

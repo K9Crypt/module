@@ -4,7 +4,7 @@ module.exports = {
   KEY_SIZE: 32,
   TAG_SIZE: 16,
   PBKDF2_ITERATIONS: 310000,
-  HASH_SEED: 0xcafebabe,
-  PEPPER: "veryLongAndComplexPepperValue123!@#$%^&*()_+[]{}|;:,.<>?",
-  HMAC_KEY: "veryLongAndComplexHMACKeyValue456!@#$%^&*()_+[]{}|;:,.<>?",
+  HASH_SEED: 0xCAFEBABE,
+  PEPPER: 'veryLongAndComplexPepperValue123!@#$%^&*()_+[]{}|;:,.<>?',
+  HMAC_KEY: 'veryLongAndComplexHMACKeyValue456!@#$%^&*()_+[]{}|;:,.<>?',
 };
