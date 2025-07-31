@@ -6,9 +6,9 @@ This is a special encryption algorithm created for K9Crypt.
 
 ## Updates
 
-**v1.1.4**
+**v1.1.5**
 
-- You can now use the module in both ES Modules and CommonJS formats. This makes it easier to switch between different module types in your project.
+- HOT FIX: Fixed an issue where installing the module caused a "@types/k9crypt" error.
 
 ## Installation
 
