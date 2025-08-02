@@ -1,33 +1,10 @@
 {
   "name": "k9crypt",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "A special encryption algorithm created for K9Crypt.",
-  "type": "module",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/types/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/types/index.d.ts",
-        "default": "./dist/esm/index.js"
-      },
-      "require": {
-        "types": "./dist/types/index.d.ts",
-        "default": "./dist/cjs/index.js"
-      }
-    }
-  },
-  "files": [
-    "dist"
-  ],
+  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "clean": "rm -rf dist",
-    "build:types": "tsc --project tsconfig.json",
-    "build:esm": "babel src --out-dir dist/esm --copy-files",
-    "build:cjs": "babel src --out-dir dist/cjs --copy-files --config-file ./babel.config.cjs",
-    "build": "bun run clean && bun run build:esm && bun run build:cjs && bun run build:types"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "secure",
@@ -55,11 +32,5 @@
   "bugs": {
     "url": "https://github.com/K9Crypt/module/issues"
   },
-  "homepage": "https://k9crypt.xyz",
-  "devDependencies": {
-    "@babel/cli": "^7.28.0",
-    "@babel/core": "^7.28.0",
-    "@babel/preset-env": "^7.28.0",
-    "typescript": "^5.8.3"
-  }
+  "homepage": "https://k9crypt.xyz"
 }
