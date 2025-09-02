@@ -6,20 +6,24 @@ exports.compress = async (data) => {
     const brotliParams = {
       params: {
         [zlib.constants.BROTLI_PARAM_MODE]: zlib.constants.BROTLI_MODE_TEXT,
-        [zlib.constants.BROTLI_PARAM_QUALITY]: zlib.constants.BROTLI_MAX_QUALITY,
+        [zlib.constants.BROTLI_PARAM_QUALITY]: 4,
         [zlib.constants.BROTLI_PARAM_SIZE_HINT]: Buffer.byteLength(data, 'utf8'),
         [zlib.constants.BROTLI_PARAM_LGWIN]: 24
       }
     };
 
     const brotliCompressed = await new Promise((resolve, reject) => {
-      zlib.brotliCompress(Buffer.from(data, 'utf8'), brotliParams, (err, compressed) => {
-        if (err) reject(err);
-        else resolve(compressed);
-      });
+      zlib.brotliCompress(
+        Buffer.from(data, 'utf8'),
+        brotliParams,
+        (err, compressed) => {
+          if (err) reject(err);
+          else resolve(compressed);
+        }
+      );
     });
 
-    const lzmaCompressed = await lzma.compress(brotliCompressed, 9);
+    const lzmaCompressed = await lzma.compress(brotliCompressed, 3);
     return lzmaCompressed;
   } catch (error) {
     throw new Error(`Compression error: ${error.message}`);

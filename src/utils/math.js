@@ -1,14 +1,11 @@
-exports.reverseBuffer = (data, reverse = false) => {
-  if (reverse) {
-    return Buffer.from(data.toString('hex').split('').reverse().join(''), 'hex');
-  }
-  return Buffer.from(data.toString('hex').split('').reverse().join(''), 'hex');
+exports.reverseBuffer = (data) => {
+  return Buffer.from(data).reverse();
 };
 
 exports.reverseHash = (hash) => {
-  return Buffer.from(hash.toString('hex').split('').reverse().join(''), 'hex');
+  return Buffer.from(hash).reverse();
 };
 
 exports.enhanceKey = (key) => {
-  return Buffer.from(key.toString('hex').split('').reverse().join(''), 'hex');
+  return Buffer.from(key).reverse();
 };

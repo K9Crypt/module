@@ -3,7 +3,7 @@ const { compress, decompress } = require('./utils/compression');
 const { deriveKey } = require('./utils/keyDerivation');
 const { encrypt, decrypt } = require('./utils/encryption');
 const { hash, verifyHash } = require('./utils/hashing');
-const { SALT_SIZE, IV_SIZE, TAG_SIZE } = require('./constants');
+const { SALT_SIZE, IV_SIZE, TAG_SIZE, ARGON2_SALT_SIZE, ARGON2_HASH_LENGTH } = require('./constants');
 
 class K9crypt {
   constructor(secretKey) {
@@ -25,10 +25,11 @@ class K9crypt {
       const compressed = await compress(plaintext);
       const salt = crypto.randomBytes(SALT_SIZE);
       const key = await deriveKey(this.secretKey, salt);
-      const { iv1, iv2, iv3, iv4, iv5, encrypted, tag1 } = encrypt(compressed, key);
-      const dataToHash = Buffer.concat([salt, iv1, iv2, iv3, iv4, iv5, encrypted, tag1]);
-      const dataHash = hash(dataToHash);
-      const result = Buffer.concat([salt, iv1, iv2, iv3, iv4, iv5, encrypted, tag1, dataHash]);
+      const { iv1, iv2, iv3, iv4, iv5, encrypted, tag1 } = await encrypt(compressed, key);
+      const dataToHash = Buffer.concat([ salt, iv1, iv2, iv3, iv4, iv5, encrypted, tag1 ]);
+      const argon2Salt = crypto.randomBytes(ARGON2_SALT_SIZE);
+      const dataHash = await hash(dataToHash, argon2Salt);
+      const result = Buffer.concat([ salt, iv1, iv2, iv3, iv4, iv5, encrypted, tag1, argon2Salt, dataHash ]);
       return result.toString('base64');
     } catch (error) {
       console.log('Encryption failed');
@@ -44,17 +45,19 @@ class K9crypt {
       const iv3 = data.slice(SALT_SIZE + 2 * IV_SIZE, SALT_SIZE + 3 * IV_SIZE);
       const iv4 = data.slice(SALT_SIZE + 3 * IV_SIZE, SALT_SIZE + 4 * IV_SIZE);
       const iv5 = data.slice(SALT_SIZE + 4 * IV_SIZE, SALT_SIZE + 5 * IV_SIZE);
-      const encrypted = data.slice(SALT_SIZE + 5 * IV_SIZE, -TAG_SIZE - 64);
-      const tag1 = data.slice(-TAG_SIZE - 64, -64);
-      const dataHash = data.slice(-64);
 
-      const dataToVerify = data.slice(0, -64);
-      if (!verifyHash(dataToVerify, dataHash)) {
+      const dataHash = data.slice(-ARGON2_HASH_LENGTH);
+      const argon2Salt = data.slice(-ARGON2_HASH_LENGTH - ARGON2_SALT_SIZE, -ARGON2_HASH_LENGTH);
+      const tag1 = data.slice(-ARGON2_HASH_LENGTH - ARGON2_SALT_SIZE - TAG_SIZE, -ARGON2_HASH_LENGTH - ARGON2_SALT_SIZE);
+      const encrypted = data.slice(SALT_SIZE + 5 * IV_SIZE, -ARGON2_HASH_LENGTH - ARGON2_SALT_SIZE - TAG_SIZE);
+
+      const dataToVerify = data.slice(0, -ARGON2_HASH_LENGTH - ARGON2_SALT_SIZE);
+      if (!(await verifyHash(dataToVerify, dataHash, argon2Salt))) {
         console.log('Data integrity check failed');
       }
 
       const key = await deriveKey(this.secretKey, salt);
-      const decrypted = decrypt(encrypted, key, iv1, iv2, iv3, iv4, iv5, tag1);
+      const decrypted = await decrypt(encrypted, key, iv1, iv2, iv3, iv4, iv5, tag1);
       const decompressed = await decompress(decrypted);
       return decompressed.toString('utf8');
     } catch (error) {

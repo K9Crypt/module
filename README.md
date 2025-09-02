@@ -6,9 +6,10 @@ This is a special encryption algorithm created for K9Crypt.
 
 ## Updates
 
-**v1.1.6**
+**v1.1.7**
 
-- Due to issues reported in feedback, it has been updated to be usable only as CommonJS.
+- The Argon2 hashing system has now been integrated, offering support for both SHA512 and Argon2.
+- Encryption performance has been optimized, significantly increasing speed.
 
 ## Installation
 
