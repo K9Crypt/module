@@ -1,6 +1,6 @@
 {
   "name": "k9crypt",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "A special encryption algorithm created for K9Crypt.",
   "main": "index.js",
   "scripts": {

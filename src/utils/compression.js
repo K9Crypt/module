@@ -1,12 +1,19 @@
 const zlib = require('zlib');
 const lzma = require('lzma-native');
 
-exports.compress = async (data) => {
+exports.compress = async (data, compressionLevel = 3) => {
   try {
+    if (compressionLevel < 0 || compressionLevel > 9) {
+      throw new Error('Compression level must be between 0 and 9');
+    }
+
+    const brotliQuality = Math.min(Math.max(Math.floor(compressionLevel / 2), 1), 11);
+    const lzmaLevel = Math.min(compressionLevel, 9);
+
     const brotliParams = {
       params: {
         [zlib.constants.BROTLI_PARAM_MODE]: zlib.constants.BROTLI_MODE_TEXT,
-        [zlib.constants.BROTLI_PARAM_QUALITY]: 4,
+        [zlib.constants.BROTLI_PARAM_QUALITY]: brotliQuality,
         [zlib.constants.BROTLI_PARAM_SIZE_HINT]: Buffer.byteLength(data, 'utf8'),
         [zlib.constants.BROTLI_PARAM_LGWIN]: 24
       }
@@ -18,12 +25,12 @@ exports.compress = async (data) => {
         brotliParams,
         (err, compressed) => {
           if (err) reject(err);
-          else resolve(compressed);
+          if (!err) resolve(compressed);
         }
       );
     });
 
-    const lzmaCompressed = await lzma.compress(brotliCompressed, 3);
+    const lzmaCompressed = await lzma.compress(brotliCompressed, lzmaLevel);
     return lzmaCompressed;
   } catch (error) {
     throw new Error(`Compression error: ${error.message}`);

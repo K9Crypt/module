@@ -6,10 +6,13 @@ This is a special encryption algorithm created for K9Crypt.
 
 ## Updates
 
-**v1.1.7**
+**v1.1.8**
 
-- The Argon2 hashing system has now been integrated, offering support for both SHA512 and Argon2.
-- Encryption performance has been optimized, significantly increasing speed.
+- Added `encryptFile()` and `decryptFile()` methods for large file encryption with progress tracking
+- Added `encryptMany()` and `decryptMany()` methods for batch operations with sequential and parallel processing
+- Introduced compression level control (0-9) for flexible speed/size balance
+- All method names simplified for better user experience
+- Parallel processing support for high-volume data operations
 
 ## Installation
 
@@ -21,6 +24,8 @@ bun add k9crypt
 ```
 
 ## Usage
+
+### Basic Usage
 
 ```javascript
 const k9crypt = require('k9crypt');
@@ -44,6 +49,85 @@ async function test() {
 }
 
 test();
+```
+
+### Advanced Features
+
+#### Compression Level Control
+
+```javascript
+const encryptor = new k9crypt(secretKey, { compressionLevel: 5 });
+
+const encrypted = await encryptor.encrypt(plaintext, { compressionLevel: 7 });
+```
+
+#### File Encryption with Progress Tracking
+
+```javascript
+async function encryptBigFile() {
+  const largeData = 'Very large data...';
+  
+  const encrypted = await encryptor.encryptFile(largeData, {
+    compressionLevel: 6,
+    onProgress: (progress) => {
+      console.log(`Processed: ${progress.processedBytes} bytes`);
+    }
+  });
+
+  const decrypted = await encryptor.decryptFile(encrypted, {
+    onProgress: (progress) => {
+      console.log(`Decrypted: ${progress.processedBytes} bytes`);
+    }
+  });
+
+  return decrypted;
+}
+```
+
+#### Multiple Data Encryption
+
+```javascript
+async function encryptMultipleData() {
+  const dataArray = ['data1', 'data2', 'data3', 'data4'];
+  
+  const encrypted = await encryptor.encryptMany(dataArray, {
+    compressionLevel: 5,
+    onProgress: (progress) => {
+      console.log(`Progress: ${progress.percentage}% (${progress.current}/${progress.total})`);
+    }
+  });
+
+  const decrypted = await encryptor.decryptMany(encrypted, {
+    skipInvalid: true,
+    onProgress: (progress) => {
+      console.log(`Progress: ${progress.percentage}%`);
+    }
+  });
+
+  return decrypted;
+}
+```
+
+#### Parallel Processing
+
+```javascript
+async function encryptManyDataFast() {
+  const dataArray = Array(100).fill('sample data');
+  
+  const encrypted = await encryptor.encryptMany(dataArray, {
+    parallel: true,
+    batchSize: 20,
+    compressionLevel: 4
+  });
+
+  const decrypted = await encryptor.decryptMany(encrypted, {
+    parallel: true,
+    batchSize: 20,
+    skipInvalid: false
+  });
+
+  return decrypted;
+}
 ```
 
 ## License
