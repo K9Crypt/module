@@ -1,11 +1,9 @@
 {
   "name": "k9crypt",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "A special encryption algorithm created for K9Crypt.",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "scripts": {},
   "keywords": [
     "secure",
     "encryption",
@@ -19,7 +17,6 @@
   "license": "MIT",
   "dependencies": {
     "argon2": "^0.44.0",
-    "crypto-js": "^4.2.0",
     "lzma-native": "^8.0.6"
   },
   "repository": {

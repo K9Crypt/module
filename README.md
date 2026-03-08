@@ -4,16 +4,6 @@
 
 This is a special encryption algorithm created for K9Crypt.
 
-## Updates
-
-**v1.1.8**
-
-- Added `encryptFile()` and `decryptFile()` methods for large file encryption with progress tracking
-- Added `encryptMany()` and `decryptMany()` methods for batch operations with sequential and parallel processing
-- Introduced compression level control (0-9) for flexible speed/size balance
-- All method names simplified for better user experience
-- Parallel processing support for high-volume data operations
-
 ## Installation
 
 ```bash
@@ -44,7 +34,8 @@ async function test() {
     const decrypted = await encryptor.decrypt(encrypted);
     console.log('Decrypted data:', decrypted);
   } catch (error) {
-    console.error('Encryption error:', error);
+    // Errors are generic (e.g. "Encryption failed", "Decryption failed") for security
+    console.error('Error:', error.message);
   }
 }
 

@@ -1,9 +1,39 @@
 const crypto = require('crypto');
+const os = require('os');
 const { compress, decompress } = require('./compression');
 const { deriveKey } = require('./keyDerivation');
 const { encrypt, decrypt } = require('./encryption');
 const { hash, verifyHash } = require('./hashing');
-const { SALT_SIZE, IV_SIZE, TAG_SIZE, ARGON2_SALT_SIZE, ARGON2_HASH_LENGTH } = require('../constants');
+const { SALT_SIZE, IV_SIZE, TAG_SIZE, ARGON2_SALT_SIZE, ARGON2_HASH_LENGTH, MAX_PLAINTEXT_SIZE, MAX_CIPHERTEXT_SIZE, MIN_PAYLOAD_SIZE } = require('../constants');
+
+const DEFAULT_BATCH_SIZE = Math.max(1, Math.min(32, (os.cpus?.().length ?? 4) * 2));
+
+const buildEncryptedPayload = (salt, iv1, iv2, iv3, iv4, iv5, encrypted, tag1, argon2Salt, dataHash) => {
+  const headerLen = SALT_SIZE + 5 * IV_SIZE;
+  const trailerLen = ARGON2_SALT_SIZE + ARGON2_HASH_LENGTH;
+  const result = Buffer.allocUnsafe(headerLen + encrypted.length + TAG_SIZE + trailerLen);
+  let offset = 0;
+  result.set(salt, offset);
+  offset += SALT_SIZE;
+  result.set(iv1, offset);
+  offset += IV_SIZE;
+  result.set(iv2, offset);
+  offset += IV_SIZE;
+  result.set(iv3, offset);
+  offset += IV_SIZE;
+  result.set(iv4, offset);
+  offset += IV_SIZE;
+  result.set(iv5, offset);
+  offset += IV_SIZE;
+  result.set(encrypted, offset);
+  offset += encrypted.length;
+  result.set(tag1, offset);
+  offset += TAG_SIZE;
+  result.set(argon2Salt, offset);
+  offset += ARGON2_SALT_SIZE;
+  result.set(dataHash, offset);
+  return result.toString('base64');
+};
 
 exports.encryptMany = async (dataArray, secretKey, options = {}) => {
   try {
@@ -28,6 +58,11 @@ exports.encryptMany = async (dataArray, secretKey, options = {}) => {
         continue;
       }
 
+      const itemBuf = Buffer.isBuffer(item) ? item : Buffer.from(item, 'utf8');
+      if (itemBuf.length > MAX_PLAINTEXT_SIZE) {
+        throw new Error('Payload too large');
+      }
+
       const compressed = await compress(item, compressionLevel);
       const salt = crypto.randomBytes(SALT_SIZE);
       const key = await deriveKey(secretKey, salt);
@@ -37,8 +72,7 @@ exports.encryptMany = async (dataArray, secretKey, options = {}) => {
       const argon2Salt = crypto.randomBytes(ARGON2_SALT_SIZE);
       const dataHash = await hash(dataToHash, argon2Salt);
 
-      const result = Buffer.concat([salt, iv1, iv2, iv3, iv4, iv5, encrypted, tag1, argon2Salt, dataHash]);
-      results.push(result.toString('base64'));
+      results.push(buildEncryptedPayload(salt, iv1, iv2, iv3, iv4, iv5, encrypted, tag1, argon2Salt, dataHash));
 
       if (onProgress) {
         onProgress({
@@ -51,7 +85,7 @@ exports.encryptMany = async (dataArray, secretKey, options = {}) => {
 
     return results;
   } catch (error) {
-    throw new Error(`Batch encryption failed: ${error.message}`);
+    throw new Error('Batch encryption failed');
   }
 };
 
@@ -80,6 +114,20 @@ exports.decryptMany = async (ciphertextArray, secretKey, options = {}) => {
 
       try {
         const data = Buffer.from(item, 'base64');
+        if (data.length > MAX_CIPHERTEXT_SIZE) {
+          if (skipInvalid) {
+            results.push(null);
+            continue;
+          }
+          throw new Error('Payload too large');
+        }
+        if (data.length < MIN_PAYLOAD_SIZE) {
+          if (skipInvalid) {
+            results.push(null);
+            continue;
+          }
+          throw new Error('Payload too small');
+        }
         const salt = data.slice(0, SALT_SIZE);
         const iv1 = data.slice(SALT_SIZE, SALT_SIZE + IV_SIZE);
         const iv2 = data.slice(SALT_SIZE + IV_SIZE, SALT_SIZE + 2 * IV_SIZE);
@@ -99,8 +147,7 @@ exports.decryptMany = async (ciphertextArray, secretKey, options = {}) => {
             results.push(null);
             continue;
           }
-
-          throw new Error(`Data integrity check failed for item ${i}`);
+          throw new Error('Data integrity check failed');
         }
 
         const key = await deriveKey(secretKey, salt);
@@ -128,7 +175,7 @@ exports.decryptMany = async (ciphertextArray, secretKey, options = {}) => {
 
     return results;
   } catch (error) {
-    throw new Error(`Batch decryption failed: ${error.message}`);
+    throw new Error('Batch decryption failed');
   }
 };
 
@@ -142,18 +189,23 @@ exports.encryptManyParallel = async (dataArray, secretKey, options = {}) => {
       return [];
     }
 
-    const compressionLevel = options.compressionLevel || 3;
-    const batchSize = options.batchSize || 10;
+    const compressionLevel = options.compressionLevel ?? 3;
+    const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
     const results = new Array(dataArray.length);
-    const batches = [];
 
+    // Process batches sequentially to bound concurrency; prevents OOM from simultaneous Argon2 calls
     for (let i = 0; i < dataArray.length; i += batchSize) {
       const batch = dataArray.slice(i, Math.min(i + batchSize, dataArray.length));
-      const batchPromises = batch.map(async (item, index) => {
+      const batchResults = await Promise.all(batch.map(async (item, index) => {
         const actualIndex = i + index;
 
         if (item === null || item === undefined) {
           return { index: actualIndex, result: null };
+        }
+
+        const itemBuf = Buffer.isBuffer(item) ? item : Buffer.from(item, 'utf8');
+        if (itemBuf.length > MAX_PLAINTEXT_SIZE) {
+          throw new Error('Payload too large');
         }
 
         const compressed = await compress(item, compressionLevel);
@@ -165,24 +217,20 @@ exports.encryptManyParallel = async (dataArray, secretKey, options = {}) => {
         const argon2Salt = crypto.randomBytes(ARGON2_SALT_SIZE);
         const dataHash = await hash(dataToHash, argon2Salt);
 
-        const result = Buffer.concat([salt, iv1, iv2, iv3, iv4, iv5, encrypted, tag1, argon2Salt, dataHash]);
-        return { index: actualIndex, result: result.toString('base64') };
-      });
+        return {
+          index: actualIndex,
+          result: buildEncryptedPayload(salt, iv1, iv2, iv3, iv4, iv5, encrypted, tag1, argon2Salt, dataHash)
+        };
+      }));
 
-      batches.push(Promise.all(batchPromises));
-    }
-
-    const batchResults = await Promise.all(batches);
-
-    for (const batch of batchResults) {
-      for (const item of batch) {
+      for (const item of batchResults) {
         results[item.index] = item.result;
       }
     }
 
     return results;
   } catch (error) {
-    throw new Error(`Parallel batch encryption failed: ${error.message}`);
+    throw new Error('Parallel batch encryption failed');
   }
 };
 
@@ -196,14 +244,14 @@ exports.decryptManyParallel = async (ciphertextArray, secretKey, options = {}) =
       return [];
     }
 
-    const batchSize = options.batchSize || 10;
+    const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
     const skipInvalid = options.skipInvalid || false;
     const results = new Array(ciphertextArray.length);
-    const batches = [];
 
+    // Process batches sequentially to bound concurrency; prevents OOM from simultaneous Argon2 calls
     for (let i = 0; i < ciphertextArray.length; i += batchSize) {
       const batch = ciphertextArray.slice(i, Math.min(i + batchSize, ciphertextArray.length));
-      const batchPromises = batch.map(async (item, index) => {
+      const batchResults = await Promise.all(batch.map(async (item, index) => {
         const actualIndex = i + index;
 
         if (item === null || item === undefined) {
@@ -212,6 +260,18 @@ exports.decryptManyParallel = async (ciphertextArray, secretKey, options = {}) =
 
         try {
           const data = Buffer.from(item, 'base64');
+          if (data.length > MAX_CIPHERTEXT_SIZE) {
+            if (skipInvalid) {
+              return { index: actualIndex, result: null };
+            }
+            throw new Error('Payload too large');
+          }
+          if (data.length < MIN_PAYLOAD_SIZE) {
+            if (skipInvalid) {
+              return { index: actualIndex, result: null };
+            }
+            throw new Error('Payload too small');
+          }
           const salt = data.slice(0, SALT_SIZE);
           const iv1 = data.slice(SALT_SIZE, SALT_SIZE + IV_SIZE);
           const iv2 = data.slice(SALT_SIZE + IV_SIZE, SALT_SIZE + 2 * IV_SIZE);
@@ -230,8 +290,7 @@ exports.decryptManyParallel = async (ciphertextArray, secretKey, options = {}) =
             if (skipInvalid) {
               return { index: actualIndex, result: null };
             }
-
-            throw new Error(`Data integrity check failed for item ${actualIndex}`);
+            throw new Error('Data integrity check failed');
           }
 
           const key = await deriveKey(secretKey, salt);
@@ -245,21 +304,15 @@ exports.decryptManyParallel = async (ciphertextArray, secretKey, options = {}) =
 
           throw error;
         }
-      });
+      }));
 
-      batches.push(Promise.all(batchPromises));
-    }
-
-    const batchResults = await Promise.all(batches);
-
-    for (const batch of batchResults) {
-      for (const item of batch) {
+      for (const item of batchResults) {
         results[item.index] = item.result;
       }
     }
 
     return results;
   } catch (error) {
-    throw new Error(`Parallel batch decryption failed: ${error.message}`);
+    throw new Error('Parallel batch decryption failed');
   }
 };
