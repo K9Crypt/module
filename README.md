@@ -8,9 +8,6 @@ This is a special encryption algorithm created for K9Crypt.
 
 ```bash
 bun add k9crypt
-# npm install k9crypt
-# pnpm add k9crypt
-# yarn add k9crypt
 ```
 
 ## Usage
@@ -44,7 +41,75 @@ test();
 
 ### Advanced Features
 
+#### Time-Scoped Payloads
+
+New encryptions use a versioned payload format with authenticated time metadata. The final encryption key is derived from the user secret, a random per-payload salt, and the authenticated time bucket.
+
+```javascript
+const secretKey = 'VeryLongSecretKey!@#1234567890';
+const encryptor = new k9crypt(secretKey);
+const plaintext = 'Time-scoped secure payload';
+
+const encrypted = await encryptor.encrypt(plaintext, {
+  timeStepSeconds: 300
+});
+
+const decrypted = await encryptor.decrypt(encrypted);
+
+console.log(decrypted);
+```
+
+`timeStepSeconds` controls the time bucket size. The timestamp is stored inside the authenticated payload, so decryption stays deterministic even if the system clock changes later.
+
+#### Controlled Issued Time
+
+Use `issuedAt` or `issuedAtUnix` when a system needs to assign a controlled payload timestamp.
+
+```javascript
+const issuedAt = Math.floor(Date.now() / 1000);
+
+const encrypted = await encryptor.encrypt(plaintext, {
+  issuedAt,
+  timeStepSeconds: 60
+});
+
+const decrypted = await encryptor.decrypt(encrypted);
+
+console.log(decrypted);
+```
+
+#### Freshness Policy
+
+Freshness checks are optional and run after integrity validation. They reject payloads that exceed the accepted age window or appear too far in the future.
+
+```javascript
+const encrypted = await encryptor.encrypt(plaintext, {
+  timeStepSeconds: 60
+});
+
+const decrypted = await encryptor.decrypt(encrypted, {
+  maxAgeSeconds: 300,
+  allowedClockSkewSeconds: 30
+});
+
+console.log(decrypted);
+```
+
+`maxAgeSeconds` limits how long a valid ciphertext is accepted. It is not a complete replay-prevention mechanism by itself.
+
+#### Strict Compatibility Policy
+
+Previous payloads decrypt by default for migration safety. New deployments that do not need old ciphertext support can disable that compatibility path.
+
+```javascript
+const decrypted = await encryptor.decrypt(encrypted, {
+  allowLegacyPayloads: false
+});
+```
+
 #### Compression Level Control
+
+The default compression level is `0` for low-latency encryption. Set `compressionLevel` above `0` when payload size is more important than latency.
 
 ```javascript
 const encryptor = new k9crypt(secretKey, { compressionLevel: 5 });
@@ -52,13 +117,32 @@ const encryptor = new k9crypt(secretKey, { compressionLevel: 5 });
 const encrypted = await encryptor.encrypt(plaintext, { compressionLevel: 7 });
 ```
 
-#### File Encryption with Progress Tracking
+#### Binary Payloads
+
+Buffer inputs are restored as Buffers after decryption. Text inputs are restored as strings.
+
+```javascript
+const binaryData = Buffer.from([0, 255, 1, 2, 3]);
+
+const encrypted = await encryptor.encrypt(binaryData, {
+  timeStepSeconds: 300
+});
+
+const decrypted = await encryptor.decrypt(encrypted);
+
+console.log(Buffer.isBuffer(decrypted));
+```
+
+#### Buffered Data Encryption with Progress Tracking
+
+`encryptFile` and `decryptFile` operate on buffered data. They are intended for bounded in-memory payloads and enforce a conservative size limit for production stability.
 
 ```javascript
 async function encryptBigFile() {
   const largeData = 'Very large data...';
   
   const encrypted = await encryptor.encryptFile(largeData, {
+    timeStepSeconds: 300,
     compressionLevel: 6,
     onProgress: (progress) => {
       console.log(`Processed: ${progress.processedBytes} bytes`);
@@ -66,6 +150,7 @@ async function encryptBigFile() {
   });
 
   const decrypted = await encryptor.decryptFile(encrypted, {
+    maxAgeSeconds: 600,
     onProgress: (progress) => {
       console.log(`Decrypted: ${progress.processedBytes} bytes`);
     }
@@ -82,6 +167,7 @@ async function encryptMultipleData() {
   const dataArray = ['data1', 'data2', 'data3', 'data4'];
   
   const encrypted = await encryptor.encryptMany(dataArray, {
+    timeStepSeconds: 300,
     compressionLevel: 5,
     onProgress: (progress) => {
       console.log(`Progress: ${progress.percentage}% (${progress.current}/${progress.total})`);
@@ -90,6 +176,7 @@ async function encryptMultipleData() {
 
   const decrypted = await encryptor.decryptMany(encrypted, {
     skipInvalid: true,
+    maxAgeSeconds: 600,
     onProgress: (progress) => {
       console.log(`Progress: ${progress.percentage}%`);
     }
@@ -107,13 +194,15 @@ async function encryptManyDataFast() {
   
   const encrypted = await encryptor.encryptMany(dataArray, {
     parallel: true,
-    batchSize: 20,
+    batchSize: 2,
+    timeStepSeconds: 300,
     compressionLevel: 4
   });
 
   const decrypted = await encryptor.decryptMany(encrypted, {
     parallel: true,
-    batchSize: 20,
+    batchSize: 2,
+    maxAgeSeconds: 600,
     skipInvalid: false
   });
 

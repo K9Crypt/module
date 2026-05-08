@@ -4,3 +4,4 @@ bun.lockb
 bun.lock
 .github
 .DS_Store
+test.js
