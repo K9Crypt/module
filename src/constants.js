@@ -3,16 +3,21 @@ module.exports = {
   PAYLOAD_VERSION_V2: 2,
   PAYLOAD_VERSION_V3: 3,
   PAYLOAD_VERSION_V4: 4,
-  PAYLOAD_CURRENT_VERSION: 4,
+  PAYLOAD_VERSION_V5: 5,
+  PAYLOAD_CURRENT_VERSION: 5,
+  CIPHER_AES_256_GCM: 0x00,
+  CIPHER_CHACHA20_POLY1305: 0x01,
   PAYLOAD_FLAGS_NONE: 0,
   PAYLOAD_FLAG_BINARY: 1,
   PAYLOAD_FLAG_RAW: 2,
   PAYLOAD_SUPPORTED_FLAGS: 3,
   PAYLOAD_HEADER_SIZE: 18,
+  PAYLOAD_HEADER_SIZE_V5: 19,
   DEFAULT_TIME_STEP_SECONDS: 300,
   MAX_TIME_STEP_SECONDS: 86400,
   SALT_SIZE: 32,
   IV_SIZE: 16,
+  IV_SIZE_V5: 12,
   KEY_SIZE: 32,
   TAG_SIZE: 16,
   // min 600,000 for PBKDF2-HMAC-SHA512
@@ -34,5 +39,8 @@ module.exports = {
   // salt(32) + 5*iv(80) + min_encrypted(1) + tag(16) + argon2Salt(16) + argon2Hash(64) = 209
   MIN_PAYLOAD_SIZE: 209,
   // v2 prepends authenticated time metadata: magic(4) + version(1) + flags(1) + step(4) + issuedAt(8)
-  MIN_V2_PAYLOAD_SIZE: 227
+  MIN_V2_PAYLOAD_SIZE: 227,
+  // v5: header(19) + salt(32) + iv(12) + min_ciphertext(1) + tag(16) + integritySalt(16) + dataHash(64) = 160
+  MIN_V5_PAYLOAD_SIZE: 160,
+  MASTER_KEY_SALT: Buffer.from('6b3963727970743a76353a6d61737465722d6b65792d73616c743a7631', 'hex')
 };

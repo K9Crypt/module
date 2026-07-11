@@ -1,0 +1,9 @@
+src/
+test/
+build.js
+.commandcode/
+.gitignore
+.npmignore
+*.log
+node_modules/
+.DS_Store

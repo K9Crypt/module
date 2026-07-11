@@ -72,19 +72,19 @@ exports.verifyHash = async (data, hash, salt, authKey = null) => {
   }
 };
 
-exports.macHash = async (data, salt, key) => {
+exports.macHash = (data, salt, key) => {
   const hmac = crypto.createHmac('sha512', key);
   hmac.update(salt);
   hmac.update(data);
   return hmac.digest();
 };
 
-exports.verifyMacHash = async (data, hash, salt, key) => {
+exports.verifyMacHash = (data, hash, salt, key) => {
   if (!Buffer.isBuffer(hash) || hash.length !== ARGON2_HASH_LENGTH) {
     return false;
   }
 
-  const expectedHash = await exports.macHash(data, salt, key);
+  const expectedHash = exports.macHash(data, salt, key);
 
   try {
     return crypto.timingSafeEqual(hash, expectedHash);
